@@ -38,6 +38,9 @@ type FakeGitHub struct {
 	release *github.Release
 }
 
+type FakeGit struct {
+}
+
 type MockClient struct {
 	statusCode int
 	file       string
@@ -74,13 +77,32 @@ func (f *FakeGitHub) GetRelease(ctx context.Context, tag string) (*github.Releas
 }
 
 func (f *FakeGitHub) DeleteRelease(ctx context.Context, tag string) error {
-	f.Called(ctx, tag)
 	return nil
 }
 
 func (f *FakeGitHub) CreatePullRequest(owner string, repo string, message string, head string, base string) (string, error) {
 	f.Called(owner, repo, message, head, base)
 	return "https://github.com/owner/repo/pull/42", nil
+}
+
+func (g *FakeGit) AddWorktree(workingDir string, committish string) (string, error) {
+	return workingDir, nil
+}
+
+func (g *FakeGit) RemoveWorktree(workingDir string, path string) error {
+	return nil
+}
+
+func (g *FakeGit) Add(workingDir string, args ...string) error {
+	return nil
+}
+
+func (g *FakeGit) Commit(workingDir string, message string) error {
+	return nil
+}
+
+func (g *FakeGit) Push(workingDir string, args ...string) error {
+	return nil
 }
 
 func TestReleaser_UpdateIndexFile(t *testing.T) {
@@ -287,6 +309,7 @@ func TestReleaser_CreateReleases(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fakeGitHub := new(FakeGitHub)
+			fakeGit := new(FakeGit)
 			r := &Releaser{
 				config: &config.Options{
 					PackagePath:         tt.packagePath,
@@ -294,6 +317,7 @@ func TestReleaser_CreateReleases(t *testing.T) {
 					ReleaseNameTemplate: "{{ .Name }}-{{ .Version }}",
 				},
 				github: fakeGitHub,
+				git:    fakeGit,
 			}
 			fakeGitHub.On("CreateRelease", mock.Anything, mock.Anything).Return(nil)
 			err := r.CreateReleases()
