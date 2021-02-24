@@ -122,6 +122,21 @@ func (c *Client) CreateRelease(ctx context.Context, input *Release) error {
 	return nil
 }
 
+// DeleteRelease deletes existing release object in the Github API
+func (c *Client) DeleteRelease(ctx context.Context, tag string) error {
+	// Check Release whether already exists or not
+	release, _, err := c.Repositories.GetReleaseByTag(context.TODO(), c.owner, c.repo, tag)
+	if err != nil {
+		return err
+	}
+
+	_, err = c.Repositories.DeleteRelease(context.TODO(), c.owner, c.repo, *release.ID)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // CreatePullRequest creates a pull request in the repository specified by repoURL.
 // The return value is the pull request URL.
 func (c *Client) CreatePullRequest(owner string, repo string, message string, head string, base string) (string, error) {

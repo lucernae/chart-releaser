@@ -49,6 +49,7 @@ import (
 type GitHub interface {
 	CreateRelease(ctx context.Context, input *github.Release) error
 	GetRelease(ctx context.Context, tag string) (*github.Release, error)
+	DeleteRelease(ctx context.Context, tag string) error
 	CreatePullRequest(owner string, repo string, message string, head string, base string) (string, error)
 }
 
@@ -325,6 +326,18 @@ func (r *Releaser) CreateReleases() error {
 		if _, err := os.Stat(provFile); err == nil {
 			asset := &github.Asset{Path: provFile}
 			release.Assets = append(release.Assets, asset)
+		}
+
+		// Check if we have existing release
+		_, err = r.github.GetRelease(context.TODO(), release.Name)
+		if err != nil {
+			err := r.github.DeleteRelease(context.TODO(), release.Name)
+			if err != nil {
+				return errors.Wrap(err, "error deleting existing Github release")
+			}
+			if err := r.git.Push("--delete", r.config.Remote, release.Name); err != nil {
+				return errors.Wrap(err, "error deleting remote tag")
+			}
 		}
 
 		if err := r.github.CreateRelease(context.TODO(), release); err != nil {

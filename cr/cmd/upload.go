@@ -52,4 +52,5 @@ func init() {
 	uploadCmd.Flags().StringP("git-upload-url", "u", "https://uploads.github.com/", "GitHub Upload URL (only needed for private GitHub)")
 	uploadCmd.Flags().StringP("commit", "c", "", "Target commit for release")
 	uploadCmd.Flags().String("release-name-template", "{{ .Name }}-{{ .Version }}", "Go template for computing release names, using chart metadata")
+	uploadCmd.Flags().BoolP("force", "f", false, "Force recreate the release")
 }

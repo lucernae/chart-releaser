@@ -56,6 +56,7 @@ type Options struct {
 	PR                  bool   `mapstructure:"pr"`
 	Remote              string `mapstructure:"remote"`
 	ReleaseNameTemplate string `mapstructure:"release-name-template"`
+	Force               bool   `mapstructure:"force"`
 }
 
 func LoadConfiguration(cfgFile string, cmd *cobra.Command, requiredFlags []string) (*Options, error) {
