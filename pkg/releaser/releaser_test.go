@@ -35,10 +35,12 @@ import (
 
 type FakeGitHub struct {
 	mock.Mock
-	release *github.Release
+	release    *github.Release
+	isTagExist bool
 }
 
 type FakeGit struct {
+	mock.Mock
 }
 
 type MockClient struct {
@@ -77,7 +79,15 @@ func (f *FakeGitHub) GetRelease(ctx context.Context, tag string) (*github.Releas
 }
 
 func (f *FakeGitHub) DeleteRelease(ctx context.Context, tag string) error {
+	f.Called(ctx, tag)
+	// we delete tags
+	f.isTagExist = false
 	return nil
+}
+
+func (f *FakeGitHub) IsTagExist(ctx context.Context, tag string) (bool, error) {
+	f.Called(ctx, tag)
+	return f.isTagExist, nil
 }
 
 func (f *FakeGitHub) CreatePullRequest(owner string, repo string, message string, head string, base string) (string, error) {
@@ -102,6 +112,7 @@ func (g *FakeGit) Commit(workingDir string, message string) error {
 }
 
 func (g *FakeGit) Push(workingDir string, args ...string) error {
+	g.Called(workingDir, args)
 	return nil
 }
 
@@ -279,6 +290,7 @@ func TestReleaser_CreateReleases(t *testing.T) {
 		chart       string
 		version     string
 		commit      string
+		force       bool
 		error       bool
 	}{
 		{
@@ -287,6 +299,7 @@ func TestReleaser_CreateReleases(t *testing.T) {
 			"test-chart",
 			"0.1.0",
 			"",
+			false,
 			true,
 		},
 		{
@@ -296,6 +309,7 @@ func TestReleaser_CreateReleases(t *testing.T) {
 			"0.1.0",
 			"",
 			false,
+			false,
 		},
 		{
 			"valid-package-path-with-commit",
@@ -303,6 +317,16 @@ func TestReleaser_CreateReleases(t *testing.T) {
 			"test-chart",
 			"0.1.0",
 			"5e239bd19fbefb9eb0181ecf0c7ef73b8fe2753c",
+			false,
+			false,
+		},
+		{
+			"valid-package-path-with-force-recreate",
+			"testdata/release-packages",
+			"test-chart",
+			"0.1.0",
+			"",
+			true,
 			false,
 		},
 	}
@@ -315,11 +339,15 @@ func TestReleaser_CreateReleases(t *testing.T) {
 					PackagePath:         tt.packagePath,
 					Commit:              tt.commit,
 					ReleaseNameTemplate: "{{ .Name }}-{{ .Version }}",
+					Force:               tt.force,
 				},
 				github: fakeGitHub,
 				git:    fakeGit,
 			}
 			fakeGitHub.On("CreateRelease", mock.Anything, mock.Anything).Return(nil)
+			fakeGitHub.On("DeleteRelease", mock.Anything, mock.Anything).Return(nil)
+			fakeGitHub.On("IsTagExist", mock.Anything, mock.Anything).Return(nil)
+			fakeGit.On("Push", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 			err := r.CreateReleases()
 			if tt.error {
 				assert.Error(t, err)
@@ -336,6 +364,15 @@ func TestReleaser_CreateReleases(t *testing.T) {
 				assert.Equal(t, assetPath, fakeGitHub.release.Assets[0].Path)
 				assert.Equal(t, tt.commit, fakeGitHub.release.Commit)
 				fakeGitHub.AssertNumberOfCalls(t, "CreateRelease", 1)
+			}
+			if tt.force {
+				fakeGitHub.AssertNumberOfCalls(t, "DeleteRelease", 1)
+				fakeGitHub.AssertNumberOfCalls(t, "IsTagExist", 1)
+				fakeGit.AssertNumberOfCalls(t, "Push", 1)
+			} else {
+				fakeGitHub.AssertNumberOfCalls(t, "DeleteRelease", 0)
+				fakeGitHub.AssertNumberOfCalls(t, "IsTagExist", 0)
+				fakeGit.AssertNumberOfCalls(t, "Push", 0)
 			}
 		})
 	}

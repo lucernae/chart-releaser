@@ -16,6 +16,7 @@ package github
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -122,7 +123,7 @@ func (c *Client) CreateRelease(ctx context.Context, input *Release) error {
 	return nil
 }
 
-// DeleteRelease deletes existing release object in the Github API
+// DeleteRelease deletes existing release object in the GitHub API
 func (c *Client) DeleteRelease(ctx context.Context, tag string) error {
 	// Check Release whether already exists or not
 	release, _, err := c.Repositories.GetReleaseByTag(context.TODO(), c.owner, c.repo, tag)
@@ -135,6 +136,16 @@ func (c *Client) DeleteRelease(ctx context.Context, tag string) error {
 		return err
 	}
 	return nil
+}
+
+// IsTagExist check if a tag name exists from the GitHub API
+func (c *Client) IsTagExist(ctx context.Context, tag string) (bool, error) {
+	refName := fmt.Sprintf("tags/%s", tag)
+	_, _, err := c.Git.GetRef(context.TODO(), c.owner, c.repo, refName)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // CreatePullRequest creates a pull request in the repository specified by repoURL.

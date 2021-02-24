@@ -51,6 +51,7 @@ type GitHub interface {
 	GetRelease(ctx context.Context, tag string) (*github.Release, error)
 	DeleteRelease(ctx context.Context, tag string) error
 	CreatePullRequest(owner string, repo string, message string, head string, base string) (string, error)
+	IsTagExist(ctx context.Context, tag string) (bool, error)
 }
 
 type HttpClient interface {
@@ -330,13 +331,18 @@ func (r *Releaser) CreateReleases() error {
 
 		// Check if we have existing release
 		_, err = r.github.GetRelease(context.TODO(), release.Name)
-		if err == nil {
+		if err == nil && r.config.Force {
 			err := r.github.DeleteRelease(context.TODO(), release.Name)
 			if err != nil {
 				return errors.Wrap(err, "error deleting existing Github release")
 			}
 			if err := r.git.Push(".", "--delete", r.config.Remote, release.Name); err != nil {
 				return errors.Wrap(err, "error deleting remote tag")
+			}
+
+			for isExist, _ := r.github.IsTagExist(context.TODO(), release.Name); isExist; {
+				fmt.Printf("Waiting tags to be deleted.")
+				time.Sleep(10000)
 			}
 		}
 
