@@ -330,12 +330,12 @@ func (r *Releaser) CreateReleases() error {
 
 		// Check if we have existing release
 		_, err = r.github.GetRelease(context.TODO(), release.Name)
-		if err != nil {
+		if err == nil {
 			err := r.github.DeleteRelease(context.TODO(), release.Name)
 			if err != nil {
 				return errors.Wrap(err, "error deleting existing Github release")
 			}
-			if err := r.git.Push("--delete", r.config.Remote, release.Name); err != nil {
+			if err := r.git.Push(".", "--delete", r.config.Remote, release.Name); err != nil {
 				return errors.Wrap(err, "error deleting remote tag")
 			}
 		}
